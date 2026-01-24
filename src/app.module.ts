@@ -5,6 +5,9 @@ import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { NotesModule } from './notes/notes.module';
 import { NoteBlocksModule } from './note-blocks/note-blocks.module';
+import { FlashcardsModule } from './flashcards/flashcards.module';
+import { FlashcardSetsModule } from './flashcard-sets/flashcard-sets.module';
+import { FlashcardReviewsModule } from './flashcard-reviews/flashcard-reviews.module';
 
 @Module({
   imports: [
@@ -23,6 +26,9 @@ import { NoteBlocksModule } from './note-blocks/note-blocks.module';
     }),
     NotesModule,
     NoteBlocksModule,
+    FlashcardsModule,
+    FlashcardSetsModule,
+    FlashcardReviewsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
