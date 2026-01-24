@@ -23,6 +23,12 @@ export class Note {
 
   @Column({ name: 'is_deleted', default: false })
   isDeleted: boolean;
+  
+  @Column({ name: 'has_flashcard', default: false })
+  hasFlashcard: boolean;
+
+  @Column({ name: 'has_quiz', default: false })
+  hasQuiz: boolean;
 
   @CreateDateColumn({ name: 'created_at' })
   createdAt: Date;
