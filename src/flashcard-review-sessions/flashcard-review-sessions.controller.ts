@@ -18,21 +18,29 @@ export class FlashcardReviewSessionsController {
     private readonly sessionService: FlashcardReviewSessionsService,
   ) {}
 
-  @Post('start')
+  @Post(':setId/start')
   start(
-    @Body('setId') setId: string,
+    @Param('setId') setId: string,
   ) {
     return this.sessionService.startSession(
       setId,
     );
   }
 
-  @Get('latest')
+  @Get(':setId/latest')
   getLatest(
     @Query('setId') setId: string,
   ) {
     return this.sessionService.getLatestSession(
       setId,
     );
+  }
+
+  @Get(':setId/count')
+  async countBySet(
+    @Param('setId') setId: string,
+  ) {
+    const count = await this.sessionService.countBySet(setId);
+    return { timesReviewed: count };
   }
 }

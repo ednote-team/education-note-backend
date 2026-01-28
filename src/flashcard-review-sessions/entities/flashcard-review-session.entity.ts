@@ -22,6 +22,15 @@ export class FlashcardReviewSession {
   @Column({ type: 'int', name: 'review_round' })
   reviewRound: number;
 
+  @Column({ type: 'int', name: 'correct_count', default: 0 })
+  correctCount: number;
+
+  @Column({ type: 'int', name: 'total_reviewed', default: 0 })
+  totalReviewed: number;
+
+  @Column({ type: 'int', default: 0 })
+  score: number;
+
   @OneToMany(
     () => FlashcardReview,
     (review) => review.session,

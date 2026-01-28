@@ -21,7 +21,7 @@ export class FlashcardReviewSessionsService {
       const nextRound = lastSession ? lastSession.reviewRound + 1 : 1;
 
       const session = manager.create(FlashcardReviewSession, {
-        setId,
+        set: { id: setId },
         reviewRound: nextRound,
       });
 
@@ -33,6 +33,12 @@ export class FlashcardReviewSessionsService {
     return this.sessionRepo.findOne({
       where: { set: { id: setId } },
       order: { reviewRound: 'DESC' },
+    });
+  }
+
+  async countBySet(setId: string): Promise<number> {
+    return this.sessionRepo.count({
+      where: { set: { id: setId } },
     });
   }
 }

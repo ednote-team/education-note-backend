@@ -2,12 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { FlashcardReview } from './entities/flashcard-review.entity';
+import { FlashcardReviewSession } from '../flashcard-review-sessions/entities/flashcard-review-session.entity';
 
 @Injectable()
 export class FlashcardReviewsService {
   constructor(
     @InjectRepository(FlashcardReview)
     private readonly reviewRepo: Repository<FlashcardReview>,
+
+    @InjectRepository(FlashcardReviewSession)
+    private readonly sessionRepo: Repository<FlashcardReviewSession>,
   ) {}
 
   async submitReview({
@@ -25,8 +29,9 @@ export class FlashcardReviewsService {
       session: { id: sessionId },
       isCorrect,
     });
-
+    
     await this.reviewRepo.save(review);
+    await this.updateSessionScore(sessionId);
 
     return { success: true };
   }
@@ -62,5 +67,27 @@ export class FlashcardReviewsService {
         reviewedAt: 'ASC',
       },
     });
+  }
+
+  async updateSessionScore(sessionId: string) {
+    const session = await this.sessionRepo.findOne({
+      where: { id: sessionId },
+    });
+
+    if (!session) return;
+
+    const reviews = await this.reviewRepo.find({
+      where: { session: { id: sessionId } },
+    });
+
+    const correct = reviews.filter(r => r.isCorrect).length;
+    const total = reviews.length;
+
+    session.correctCount = correct;
+    session.totalReviewed = total;
+    session.score =
+      total === 0 ? 0 : Math.round((correct / total) * 100);
+
+    await this.sessionRepo.save(session);
   }
 }
