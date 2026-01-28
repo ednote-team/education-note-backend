@@ -182,6 +182,7 @@ Format:
 
     set.isDeleted = true;
     await this.setRepo.save(set);
+    await this.syncNoteHasFlashcard(set.note.id);
 
     return { success: true };
   }
@@ -201,11 +202,26 @@ Format:
     }
 
     set.isDeleted = false;
+    await this.syncNoteHasFlashcard(set.note.id);
     return this.setRepo.save(set);
   }
 
   async hardDelete(id: string): Promise<void> {
     const set = await this.findOne(id);
     await this.setRepo.remove(set);
+  }
+
+  private async syncNoteHasFlashcard(noteId: string) {
+    const count = await this.setRepo.count({
+      where: {
+        note: { id: noteId },
+        isDeleted: false,
+      },
+    });
+
+    await this.noteRepo.update(
+      { id: noteId },
+      { hasFlashcard: count > 0 },
+    );
   }
 }
