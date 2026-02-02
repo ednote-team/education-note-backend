@@ -11,3 +11,13 @@ export class UpdateNoteDto {
   @IsOptional()
   title?: string;
 }
+
+export class AiAssistDto {
+  @IsString()
+  @IsNotEmpty()
+  message: string;
+
+  @IsString()
+  @IsOptional()
+  context?: string;
+}
