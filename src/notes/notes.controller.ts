@@ -10,7 +10,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { NotesService } from './notes.service';
-import { CreateNoteDto, UpdateNoteDto } from './dto/notes.dto';
+import { CreateNoteDto, UpdateNoteDto, AiAssistDto } from './dto/notes.dto';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 
 @Controller('notes')
@@ -62,5 +62,19 @@ export class NotesController {
   @Post(':id/restore')
   restore(@Request() req, @Param('id') id: string) {
     return this.notesService.restore(id, req.user.id);
+  }
+
+  @Post(':id/ai-assist')
+  aiAssist(
+    @Request() req,
+    @Param('id') id: string,
+    @Body() dto: AiAssistDto,
+  ) {
+    return this.notesService.aiAssist(
+      id,
+      req.user.id,
+      dto.message,
+      dto.context,
+    );
   }
 }
