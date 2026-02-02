@@ -8,6 +8,10 @@ import { NoteBlocksModule } from './note-blocks/note-blocks.module';
 import { FlashcardsModule } from './flashcards/flashcards.module';
 import { FlashcardSetsModule } from './flashcard-sets/flashcard-sets.module';
 import { FlashcardReviewsModule } from './flashcard-reviews/flashcard-reviews.module';
+import { QuizSetsModule } from './quiz-sets/quiz-sets.module';
+import { QuizQuestionsModule } from './quiz-questions/quiz-questions.module';
+import { QuizAttemptsModule } from './quiz-attempts/quiz-attempts.module';
+import { QuizAnswersModule } from './quiz-answers/quiz-answers.module';
 
 @Module({
   imports: [
@@ -29,6 +33,10 @@ import { FlashcardReviewsModule } from './flashcard-reviews/flashcard-reviews.mo
     FlashcardsModule,
     FlashcardSetsModule,
     FlashcardReviewsModule,
+    QuizSetsModule,
+    QuizQuestionsModule,
+    QuizAttemptsModule,
+    QuizAnswersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
