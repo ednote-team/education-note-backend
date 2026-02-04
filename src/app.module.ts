@@ -12,6 +12,7 @@ import { QuizSetsModule } from './quiz-sets/quiz-sets.module';
 import { QuizQuestionsModule } from './quiz-questions/quiz-questions.module';
 import { QuizAttemptsModule } from './quiz-attempts/quiz-attempts.module';
 import { QuizAnswersModule } from './quiz-answers/quiz-answers.module';
+import { ChatModule } from './chat/chat.module';
 
 @Module({
   imports: [
@@ -37,6 +38,7 @@ import { QuizAnswersModule } from './quiz-answers/quiz-answers.module';
     QuizQuestionsModule,
     QuizAttemptsModule,
     QuizAnswersModule,
+    ChatModule,
   ],
   controllers: [AppController],
   providers: [AppService],
