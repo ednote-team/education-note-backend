@@ -196,6 +196,8 @@ export class NoteBlocksService {
       );
 
       await manager.save(entities);
+
+      await manager.update(Note, noteId, { updatedAt: new Date() });
     });
   }
 }
