@@ -3,6 +3,7 @@ import {
   Get,
   Post,
   Put,
+  Patch,
   Delete,
   Body,
   Param,
@@ -45,6 +46,11 @@ export class NotesController {
     @Body() dto: UpdateNoteDto,
   ) {
     return this.notesService.update(id, req.user.id, dto);
+  }
+
+  @Patch(':id/favorite')
+  toggleFavorite(@Request() req, @Param('id') id: string) {
+    return this.notesService.toggleFavorite(id, req.user.id);
   }
 
   @Delete(':id')

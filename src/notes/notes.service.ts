@@ -59,6 +59,12 @@ export class NotesService {
     return this.notesRepository.save(note);
   }
 
+  async toggleFavorite(id: string, userId: string): Promise<Note> {
+    const note = await this.findOne(id, userId);
+    note.isFavorite = !note.isFavorite;
+    return this.notesRepository.save(note);
+  }
+
   async remove(id: string, userId: string): Promise<void> {
     const note = await this.findOne(id, userId);
     note.isDeleted = true;
