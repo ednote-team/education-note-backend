@@ -68,11 +68,19 @@ export class NotesService {
   async remove(id: string, userId: string): Promise<void> {
     const note = await this.findOne(id, userId);
     note.isDeleted = true;
+    note.deletedAt = new Date();
     await this.notesRepository.save(note);
   }
 
   async hardDelete(id: string, userId: string): Promise<void> {
-    const note = await this.findOne(id, userId);
+    const note = await this.notesRepository.findOne({
+      where: { id, userId, isDeleted: true },
+    });
+
+    if (!note) {
+      throw new NotFoundException('Deleted note not found');
+    }
+
     await this.notesRepository.remove(note);
   }
 
@@ -86,13 +94,28 @@ export class NotesService {
     }
 
     note.isDeleted = false;
+    note.deletedAt = null;
     return this.notesRepository.save(note);
   }
 
-  findDeleted(userId: string): Promise<Note[]> {
+  async findDeleted(userId: string): Promise<Note[]> {
+    // Auto-cleanup notes deleted more than 30 days ago
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    await this.notesRepository
+      .createQueryBuilder()
+      .delete()
+      .from(Note)
+      .where('user_id = :userId AND is_deleted = true AND deleted_at IS NOT NULL AND deleted_at < :cutoff', {
+        userId,
+        cutoff: thirtyDaysAgo,
+      })
+      .execute();
+
     return this.notesRepository.find({
       where: { userId, isDeleted: true },
-      order: { updatedAt: 'DESC' },
+      order: { deletedAt: 'DESC' },
     });
   }
 

@@ -181,6 +181,7 @@ Format:
     }
 
     set.isDeleted = true;
+    set.deletedAt = new Date();
     await this.setRepo.save(set);
     await this.syncNoteHasFlashcard(set.note.id);
 
@@ -202,13 +203,43 @@ Format:
     }
 
     set.isDeleted = false;
+    set.deletedAt = null;
     await this.syncNoteHasFlashcard(set.note.id);
     return this.setRepo.save(set);
   }
 
-  async hardDelete(id: string): Promise<void> {
-    const set = await this.findOne(id);
+  async hardDelete(id: string, userId: string): Promise<void> {
+    const set = await this.setRepo.findOne({
+      where: { id, isDeleted: true, note: { userId } },
+      relations: ['note'],
+    });
+
+    if (!set) {
+      throw new NotFoundException('Deleted flashcard set not found');
+    }
+
     await this.setRepo.remove(set);
+  }
+
+  async findDeleted(userId: string) {
+    // Auto-cleanup sets deleted more than 30 days ago
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    await this.setRepo
+      .createQueryBuilder()
+      .delete()
+      .from(FlashcardSet)
+      .where('is_deleted = true AND deleted_at IS NOT NULL AND deleted_at < :cutoff', {
+        cutoff: thirtyDaysAgo,
+      })
+      .execute();
+
+    return this.setRepo.find({
+      where: { isDeleted: true, note: { userId } },
+      relations: ['note'],
+      order: { deletedAt: 'DESC' },
+    });
   }
 
   private async syncNoteHasFlashcard(noteId: string) {

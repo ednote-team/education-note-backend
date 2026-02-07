@@ -45,6 +45,11 @@ export class QuizSetsController {
     return this.quizSetsService.create(createQuizSetDto);
   }
 
+  @Get('deleted')
+  findDeleted(@Req() req: any) {
+    return this.quizSetsService.findDeleted(req.user.id);
+  }
+
   @Get()
   findAll() {
     return this.quizSetsService.findAll();
@@ -68,5 +73,15 @@ export class QuizSetsController {
   @Delete(':id')
   remove(@Param('id') id: string) {
     return this.quizSetsService.remove(id);
+  }
+
+  @Post(':id/restore')
+  restore(@Param('id') id: string, @Req() req: any) {
+    return this.quizSetsService.restore(id, req.user.id);
+  }
+
+  @Delete(':id/hard')
+  hardDelete(@Param('id') id: string, @Req() req: any) {
+    return this.quizSetsService.hardDelete(id, req.user.id);
   }
 }

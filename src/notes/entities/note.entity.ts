@@ -33,10 +33,13 @@ export class Note {
   @Column({ name: 'has_quiz', default: false })
   hasQuiz: boolean;
 
-  @CreateDateColumn({ name: 'created_at' })
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
+
+  @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 
-  @UpdateDateColumn({ name: 'updated_at' })
+  @UpdateDateColumn({ name: 'updated_at', type: 'timestamptz' })
   updatedAt: Date;
 
   @OneToMany(() => NoteBlock, block => block.note, { cascade: true })
