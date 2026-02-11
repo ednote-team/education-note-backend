@@ -34,6 +34,9 @@ export class QuizSet {
   @Column({ name: 'is_deleted', default: false })
   isDeleted: boolean;
 
+  @Column({ name: 'deleted_at', type: 'timestamptz', nullable: true })
+  deletedAt: Date | null;
+
   @OneToMany(() => QuizQuestion, (question) => question.quizSet)
   questions: QuizQuestion[];
 }

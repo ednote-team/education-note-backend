@@ -188,6 +188,82 @@ Format:
   }
 
   async remove(id: string): Promise<void> {
-    await this.quizSetRepository.update(id, { isDeleted: true });
+    await this.quizSetRepository.update(id, {
+      isDeleted: true,
+      deletedAt: new Date(),
+    });
+    // Sync hasQuiz flag on the note
+    const set = await this.quizSetRepository.findOne({
+      where: { id },
+      relations: ['note'],
+    });
+    if (set?.note) {
+      await this.syncNoteHasQuiz(set.note.id);
+    }
+  }
+
+  async restore(id: string, userId: string): Promise<QuizSet> {
+    const set = await this.quizSetRepository.findOne({
+      where: { id, isDeleted: true, note: { userId } },
+      relations: ['note'],
+    });
+
+    if (!set) {
+      throw new NotFoundException('Deleted quiz set not found');
+    }
+
+    set.isDeleted = false;
+    set.deletedAt = null;
+    const saved = await this.quizSetRepository.save(set);
+    await this.syncNoteHasQuiz(set.note.id);
+    return saved;
+  }
+
+  async hardDelete(id: string, userId: string): Promise<void> {
+    const set = await this.quizSetRepository.findOne({
+      where: { id, isDeleted: true, note: { userId } },
+      relations: ['note'],
+    });
+
+    if (!set) {
+      throw new NotFoundException('Deleted quiz set not found');
+    }
+
+    await this.quizSetRepository.remove(set);
+  }
+
+  async findDeleted(userId: string): Promise<QuizSet[]> {
+    // Auto-cleanup sets deleted more than 30 days ago
+    const thirtyDaysAgo = new Date();
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+    await this.quizSetRepository
+      .createQueryBuilder()
+      .delete()
+      .from(QuizSet)
+      .where('is_deleted = true AND deleted_at IS NOT NULL AND deleted_at < :cutoff', {
+        cutoff: thirtyDaysAgo,
+      })
+      .execute();
+
+    return this.quizSetRepository.find({
+      where: { isDeleted: true, note: { userId } },
+      relations: ['note'],
+      order: { deletedAt: 'DESC' },
+    });
+  }
+
+  private async syncNoteHasQuiz(noteId: string) {
+    const count = await this.quizSetRepository.count({
+      where: {
+        note: { id: noteId },
+        isDeleted: false,
+      },
+    });
+
+    await this.noteRepo.update(
+      { id: noteId },
+      { hasQuiz: count > 0 },
+    );
   }
 }

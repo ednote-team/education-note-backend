@@ -43,6 +43,11 @@ export class FlashcardSetsController {
     }
   }
 
+  @Get('deleted')
+  findDeleted(@Req() req: any) {
+    return this.flashcardSetsService.findDeleted(req.user.id);
+  }
+
   @Get()
   findByNote(
     @Query('noteId') noteId: string,
@@ -86,7 +91,8 @@ export class FlashcardSetsController {
   @Delete(':setId/hard')
   hardDelete(
     @Param('setId') setId: string,
+    @Req() req: any,
   ) {
-    return this.flashcardSetsService.hardDelete(setId);
+    return this.flashcardSetsService.hardDelete(setId, req.user.id);
   }
 }
