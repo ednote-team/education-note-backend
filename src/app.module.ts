@@ -13,6 +13,8 @@ import { QuizQuestionsModule } from './quiz-questions/quiz-questions.module';
 import { QuizAttemptsModule } from './quiz-attempts/quiz-attempts.module';
 import { QuizAnswersModule } from './quiz-answers/quiz-answers.module';
 import { ChatModule } from './chat/chat.module';
+import { StudyPlansModule } from './study-plans/study-plans.module';
+import { StudyPlanItemsModule } from './study-plan-items/study-plan-items.module';
 
 @Module({
   imports: [
@@ -39,6 +41,8 @@ import { ChatModule } from './chat/chat.module';
     QuizAttemptsModule,
     QuizAnswersModule,
     ChatModule,
+    StudyPlansModule,
+    StudyPlanItemsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
