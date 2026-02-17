@@ -18,10 +18,6 @@ export class FlashcardReviewSession {
   @JoinColumn({ name: 'set_id' })
   set: FlashcardSet;
 
-
-  @Column({ type: 'int', name: 'review_round' })
-  reviewRound: number;
-
   @Column({ type: 'int', name: 'correct_count', default: 0 })
   correctCount: number;
 

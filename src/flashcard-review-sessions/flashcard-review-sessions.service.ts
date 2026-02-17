@@ -11,32 +11,27 @@ export class FlashcardReviewSessionsService {
   ) {}
 
   async startSession(setId: string) {
-    return this.sessionRepo.manager.transaction(async (manager) => {
-      const lastSession = await manager.findOne(FlashcardReviewSession, {
-        where: { set: { id: setId } },
-        order: { reviewRound: 'DESC' },
-        lock: { mode: 'pessimistic_write' },
-      });
-
-      const nextRound = lastSession ? lastSession.reviewRound + 1 : 1;
-
-      const session = manager.create(FlashcardReviewSession, {
-        set: { id: setId },
-        reviewRound: nextRound,
-      });
-
-      return manager.save(session);
+    const session = this.sessionRepo.create({
+      set: { id: setId },
     });
+    return this.sessionRepo.save(session);
   }
 
   async getLatestSession(setId: string) {
     return this.sessionRepo.findOne({
       where: { set: { id: setId } },
-      order: { reviewRound: 'DESC' },
+      order: { id: 'DESC' },
     });
   }
 
   async countBySet(setId: string): Promise<number> {
+    return this.sessionRepo.count({
+      where: { set: { id: setId } },
+    });
+  }
+
+  /** review_round คำนวณจากจำนวน session ที่มี set_id เดียวกัน */
+  async getReviewRound(setId: string): Promise<number> {
     return this.sessionRepo.count({
       where: { set: { id: setId } },
     });
