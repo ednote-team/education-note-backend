@@ -4,12 +4,14 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { FlashcardSet } from './entities/flashcard-set.entity';
 import { Flashcard } from '../flashcards/entities/flashcards.entity';
+import { FlashcardReview } from '../flashcard-reviews/entities/flashcard-review.entity';
 import { Note } from '../notes/entities/note.entity';
 import { NoteBlock } from '../note-blocks/entities/note-block.entity';
 import { GeminiService } from '../common/llm/gemini.service';
+import { CreateManualFlashcardSetDto, MergeFlashcardSetsDto } from './dto/flashcard-set.dto';
 
 @Injectable()
 export class FlashcardSetsService {
@@ -19,6 +21,9 @@ export class FlashcardSetsService {
 
     @InjectRepository(Flashcard)
     private readonly cardRepo: Repository<Flashcard>,
+
+    @InjectRepository(FlashcardReview)
+    private readonly reviewRepo: Repository<FlashcardReview>,
 
     @InjectRepository(Note)
     private readonly noteRepo: Repository<Note>,
@@ -240,6 +245,131 @@ Format:
       relations: ['note'],
       order: { deletedAt: 'DESC' },
     });
+  }
+
+  async createManual(dto: CreateManualFlashcardSetDto, userId: string) {
+    const note = await this.noteRepo.findOne({
+      where: { id: dto.noteId, userId },
+    });
+    if (!note) throw new NotFoundException('Note not found');
+
+    if (!dto.cards || dto.cards.length === 0) {
+      throw new BadRequestException('At least one card is required');
+    }
+
+    const set = this.setRepo.create({
+      note: { id: dto.noteId },
+      title: dto.title || 'Manual Flashcards',
+      description: 'Manually created',
+    });
+    await this.setRepo.save(set);
+
+    await this.cardRepo.save(
+      dto.cards.map(c =>
+        this.cardRepo.create({
+          set_id: set.id,
+          front_text: c.front_text,
+          back_text: c.back_text,
+        }),
+      ),
+    );
+
+    note.hasFlashcard = true;
+    await this.noteRepo.save(note);
+
+    return { setId: set.id, count: dto.cards.length };
+  }
+
+  async mergeFromSets(dto: MergeFlashcardSetsDto, userId: string) {
+    const note = await this.noteRepo.findOne({
+      where: { id: dto.noteId, userId },
+    });
+    if (!note) throw new NotFoundException('Note not found');
+
+    if (!dto.sourceSetIds || dto.sourceSetIds.length === 0) {
+      throw new BadRequestException('At least one source set is required');
+    }
+
+    const cards = await this.cardRepo.find({
+      where: { set_id: In(dto.sourceSetIds) },
+    });
+
+    const set = this.setRepo.create({
+      note: { id: dto.noteId },
+      title: dto.title || 'Merged Flashcards',
+      description: 'Merged from multiple sets',
+    });
+    await this.setRepo.save(set);
+
+    if (cards.length > 0) {
+      await this.cardRepo.save(
+        cards.map(c =>
+          this.cardRepo.create({
+            set_id: set.id,
+            front_text: c.front_text,
+            back_text: c.back_text,
+          }),
+        ),
+      );
+    }
+
+    note.hasFlashcard = true;
+    await this.noteRepo.save(note);
+
+    return { setId: set.id, count: cards.length };
+  }
+
+  async mergeWrongAnswers(dto: MergeFlashcardSetsDto, userId: string) {
+    const note = await this.noteRepo.findOne({
+      where: { id: dto.noteId, userId },
+    });
+    if (!note) throw new NotFoundException('Note not found');
+
+    if (!dto.sourceSetIds || dto.sourceSetIds.length === 0) {
+      throw new BadRequestException('At least one source set is required');
+    }
+
+    const wrongReviews = await this.reviewRepo
+      .createQueryBuilder('review')
+      .innerJoinAndSelect('review.flashcard', 'flashcard')
+      .where('flashcard.set_id IN (:...setIds)', { setIds: dto.sourceSetIds })
+      .andWhere('review.isCorrect = :correct', { correct: false })
+      .getMany();
+
+    const flashcardMap = new Map<string, { front_text: string; back_text: string }>();
+    for (const review of wrongReviews) {
+      if (!flashcardMap.has(review.flashcard.id)) {
+        flashcardMap.set(review.flashcard.id, {
+          front_text: review.flashcard.front_text,
+          back_text: review.flashcard.back_text,
+        });
+      }
+    }
+    const cards = [...flashcardMap.values()];
+
+    const set = this.setRepo.create({
+      note: { id: dto.noteId },
+      title: dto.title || 'Wrong Answers Review',
+      description: 'Cards you answered incorrectly',
+    });
+    await this.setRepo.save(set);
+
+    if (cards.length > 0) {
+      await this.cardRepo.save(
+        cards.map(c =>
+          this.cardRepo.create({
+            set_id: set.id,
+            front_text: c.front_text,
+            back_text: c.back_text,
+          }),
+        ),
+      );
+    }
+
+    note.hasFlashcard = true;
+    await this.noteRepo.save(note);
+
+    return { setId: set.id, count: cards.length };
   }
 
   private async syncNoteHasFlashcard(noteId: string) {
