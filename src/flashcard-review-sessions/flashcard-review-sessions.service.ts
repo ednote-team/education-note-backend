@@ -20,7 +20,7 @@ export class FlashcardReviewSessionsService {
   async getLatestSession(setId: string) {
     return this.sessionRepo.findOne({
       where: { set: { id: setId } },
-      order: { id: 'DESC' },
+      order: { createdAt: 'DESC' },
     });
   }
 

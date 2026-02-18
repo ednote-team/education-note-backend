@@ -5,6 +5,7 @@ import {
   OneToMany,
   ManyToOne,
   JoinColumn,
+  CreateDateColumn,
 } from 'typeorm';
 import { FlashcardReview } from '../../flashcard-reviews/entities/flashcard-review.entity';
 import { FlashcardSet } from '../../flashcard-sets/entities/flashcard-set.entity';
@@ -26,6 +27,9 @@ export class FlashcardReviewSession {
 
   @Column({ type: 'int', default: 0 })
   score: number;
+
+  @CreateDateColumn({ type: 'timestamptz', name: 'created_at' })
+  createdAt: Date;
 
   @OneToMany(
     () => FlashcardReview,
