@@ -2,6 +2,7 @@ import {
   Controller,
   Get,
   Post,
+  Put,
   Delete,
   Param,
   Query,
@@ -12,7 +13,7 @@ import {
   Patch,
 } from '@nestjs/common';
 import { FlashcardSetsService } from './flashcard-sets.service';
-import { GenerateFlashcardDto } from './dto/flashcard-set.dto';
+import { GenerateFlashcardDto, UpdateFlashcardSetDto } from './dto/flashcard-set.dto';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 
 @UseGuards(SupabaseAuthGuard)
@@ -64,6 +65,15 @@ export class FlashcardSetsController {
     return this.flashcardSetsService.findOne(
       setId,
     );
+  }
+
+  @Put(':setId')
+  update(
+    @Param('setId') setId: string,
+    @Body() dto: UpdateFlashcardSetDto,
+    @Req() req: any,
+  ) {
+    return this.flashcardSetsService.update(setId, req.user.id, dto);
   }
 
   @Delete(':setId')

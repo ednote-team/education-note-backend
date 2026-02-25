@@ -166,6 +166,22 @@ Format:
     return set;
   }
 
+  async update(setId: string, userId: string, dto: { title?: string; description?: string }) {
+    const set = await this.setRepo.findOne({
+      where: { id: setId, note: { userId }, isDeleted: false },
+      relations: ['note'],
+    });
+
+    if (!set) {
+      throw new NotFoundException('Flashcard set not found');
+    }
+
+    if (dto.title !== undefined) set.title = dto.title;
+    if (dto.description !== undefined) set.description = dto.description;
+
+    return this.setRepo.save(set);
+  }
+
   async remove(setId: string, userId: string) {
     const set = await this.setRepo.findOne({
       where: {
