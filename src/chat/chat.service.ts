@@ -1,12 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { GeminiService } from '../common/llm/gemini.service';
+import { AiUsageService } from '../ai-usage/ai-usage.service';
 import { ChatHistoryItemDto } from './dto/chat.dto';
 
 @Injectable()
 export class ChatService {
-  constructor(private readonly geminiService: GeminiService) {}
+  constructor(
+    private readonly geminiService: GeminiService,
+    private readonly aiUsageService: AiUsageService,
+  ) {}
 
   async chat(
+    userId: string,
     message: string,
     context?: string,
     history?: ChatHistoryItemDto[],
@@ -59,6 +64,7 @@ export class ChatService {
       });
     }
 
+    await this.aiUsageService.increment(userId);
     const aiResponse = await this.geminiService.generateChat(contents);
 
     return { response: aiResponse };

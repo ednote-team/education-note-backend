@@ -7,16 +7,15 @@ import { Note } from '../notes/entities/note.entity';
 import { NoteBlock } from '../note-blocks/entities/note-block.entity';
 import { Flashcard } from '../flashcards/entities/flashcards.entity';
 import { GeminiService } from '../common/llm/gemini.service';
+import { AiUsageModule } from '../ai-usage/ai-usage.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([
-    FlashcardSet,
-    Flashcard,
-    Note,
-    NoteBlock,
-  ])],
+  imports: [
+    TypeOrmModule.forFeature([FlashcardSet, Flashcard, Note, NoteBlock]),
+    AiUsageModule,
+  ],
   controllers: [FlashcardSetsController],
-  providers: [FlashcardSetsService, GeminiService,],
+  providers: [FlashcardSetsService, GeminiService],
   exports: [FlashcardSetsService],
 })
 export class FlashcardSetsModule {}

@@ -10,6 +10,7 @@ import { Flashcard } from '../flashcards/entities/flashcards.entity';
 import { Note } from '../notes/entities/note.entity';
 import { NoteBlock } from '../note-blocks/entities/note-block.entity';
 import { GeminiService } from '../common/llm/gemini.service';
+import { AiUsageService } from '../ai-usage/ai-usage.service';
 
 @Injectable()
 export class FlashcardSetsService {
@@ -27,6 +28,7 @@ export class FlashcardSetsService {
     private readonly blockRepo: Repository<NoteBlock>,
 
     private readonly geminiService: GeminiService,
+    private readonly aiUsageService: AiUsageService,
   ) {}
 
   async generateFromNote(
@@ -97,6 +99,7 @@ Format:
 ]
 `;
 
+    await this.aiUsageService.increment(userId);
     const llmText = await this.geminiService.generate(prompt);
     const jsonStart = llmText.indexOf('[');
     const jsonEnd = llmText.lastIndexOf(']');
