@@ -13,7 +13,7 @@ import {
   Patch,
 } from '@nestjs/common';
 import { FlashcardSetsService } from './flashcard-sets.service';
-import { GenerateFlashcardDto, UpdateFlashcardSetDto } from './dto/flashcard-set.dto';
+import { CreateManualFlashcardSetDto, GenerateFlashcardDto, MergeFlashcardSetsDto, UpdateFlashcardSetDto } from './dto/flashcard-set.dto';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 
 @UseGuards(SupabaseAuthGuard)
@@ -42,6 +42,30 @@ export class FlashcardSetsController {
       console.error('Error generating flashcard:', error);
       throw error;
     }
+  }
+
+  @Post('manual')
+  async createManual(
+    @Body() dto: CreateManualFlashcardSetDto,
+    @Req() req: any,
+  ) {
+    return this.flashcardSetsService.createManual(dto, req.user.id);
+  }
+
+  @Post('merge')
+  async mergeFromSets(
+    @Body() dto: MergeFlashcardSetsDto,
+    @Req() req: any,
+  ) {
+    return this.flashcardSetsService.mergeFromSets(dto, req.user.id);
+  }
+
+  @Post('merge-wrong')
+  async mergeWrongAnswers(
+    @Body() dto: MergeFlashcardSetsDto,
+    @Req() req: any,
+  ) {
+    return this.flashcardSetsService.mergeWrongAnswers(dto, req.user.id);
   }
 
   @Get('deleted')
