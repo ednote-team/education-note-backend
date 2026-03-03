@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { StudyPlanItem } from './entities/study-plan-item.entity';
 import { StudyPlan } from '../study-plans/entities/study-plan.entity';
 import {
@@ -17,15 +17,24 @@ export class StudyPlanItemsService {
 
     @InjectRepository(StudyPlan)
     private readonly studyPlansRepository: Repository<StudyPlan>,
+
+    private readonly dataSource: DataSource,
   ) { }
 
-  /** 🔐 verify study plan ownership */
-  private async assertPlanOwner(userId: string, planId: string) {
+  /** verify plan ownership OR edit permission */
+  private async assertPlanAccess(userId: string, planId: string) {
     const plan = await this.studyPlansRepository.findOne({
       where: { id: planId, userId, isDeleted: false },
     });
 
-    if (!plan) {
+    if (plan) return;
+
+    const rows = await this.dataSource.query(
+      `SELECT 1 FROM note_permissions WHERE note_id = $1 AND user_id = $2 AND resource_type = 'plan' AND role = 'edit' LIMIT 1`,
+      [planId, userId],
+    );
+
+    if (!rows[0]) {
       throw new ForbiddenException('You do not have access to this study plan');
     }
   }
@@ -35,7 +44,7 @@ export class StudyPlanItemsService {
     planId: string,
     dto: CreateStudyPlanItemDto,
   ): Promise<StudyPlanItem> {
-    await this.assertPlanOwner(userId, planId);
+    await this.assertPlanAccess(userId, planId);
 
     const max = await this.studyPlanItemsRepository
       .createQueryBuilder('item')
@@ -67,7 +76,7 @@ export class StudyPlanItemsService {
   }
 
   async findAllByPlan(userId: string, planId: string): Promise<StudyPlanItem[]> {
-    await this.assertPlanOwner(userId, planId);
+    await this.assertPlanAccess(userId, planId);
 
     return this.studyPlanItemsRepository.find({
       where: { planId },
@@ -80,7 +89,7 @@ export class StudyPlanItemsService {
     id: string,
     planId: string,
   ): Promise<StudyPlanItem> {
-    await this.assertPlanOwner(userId, planId);
+    await this.assertPlanAccess(userId, planId);
 
     const item = await this.studyPlanItemsRepository.findOne({
       where: { id, planId },
@@ -110,7 +119,7 @@ export class StudyPlanItemsService {
     id: string,
     planId: string,
   ): Promise<void> {
-    await this.assertPlanOwner(userId, planId);
+    await this.assertPlanAccess(userId, planId);
 
     const item = await this.studyPlanItemsRepository.findOne({
       where: { id, planId },
@@ -136,7 +145,7 @@ export class StudyPlanItemsService {
     planId: string,
     dto: ReorderItemsDto,
   ): Promise<void> {
-    await this.assertPlanOwner(userId, planId);
+    await this.assertPlanAccess(userId, planId);
 
     await this.studyPlanItemsRepository.manager.transaction(async (manager) => {
       for (const { itemId, position } of dto.items) {
@@ -154,7 +163,7 @@ export class StudyPlanItemsService {
     planId: string,
     items: CreateStudyPlanItemDto[],
   ): Promise<void> {
-    await this.assertPlanOwner(userId, planId);
+    await this.assertPlanAccess(userId, planId);
 
     await this.studyPlanItemsRepository.manager.transaction(async (manager) => {
       await manager.delete(StudyPlanItem, { planId });

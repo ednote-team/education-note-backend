@@ -15,7 +15,7 @@ import { QuizAnswersModule } from './quiz-answers/quiz-answers.module';
 import { ChatModule } from './chat/chat.module';
 import { StudyPlansModule } from './study-plans/study-plans.module';
 import { StudyPlanItemsModule } from './study-plan-items/study-plan-items.module';
-import { AiUsageModule } from './ai-usage/ai-usage.module';
+import { NotePermissionsModule } from './note-permissions/note-permissions.module';
 
 @Module({
   imports: [
@@ -44,7 +44,7 @@ import { AiUsageModule } from './ai-usage/ai-usage.module';
     ChatModule,
     StudyPlansModule,
     StudyPlanItemsModule,
-    AiUsageModule,
+    NotePermissionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

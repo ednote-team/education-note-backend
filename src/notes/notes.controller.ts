@@ -34,6 +34,11 @@ export class NotesController {
     return this.notesService.findDeleted(req.user.id);
   }
 
+  @Get('shared-with-me')
+  getSharedWithMe(@Request() req) {
+    return this.notesService.getSharedWithMe(req.user.id);
+  }
+
   @Get(':id')
   findOne(@Request() req, @Param('id') id: string) {
     return this.notesService.findOne(id, req.user.id);
@@ -82,5 +87,40 @@ export class NotesController {
       dto.message,
       dto.context,
     );
+  }
+
+  /* ── Collab / Yjs infrastructure ── */
+
+  /**
+   * Returns the current user's access level for a note.
+   * Future Yjs WebSocket gateway will call this to verify
+   * permissions before allowing a client to join a room.
+   */
+  @Get(':id/my-access')
+  getMyAccess(@Request() req, @Param('id') id: string) {
+    return this.notesService.getMyAccess(id, req.user.id);
+  }
+
+  /**
+   * Returns base64-encoded Yjs document state.
+   * Future Yjs WS server calls this when bootstrapping a new room.
+   */
+  @Get(':id/yjs-state')
+  getYjsState(@Request() req, @Param('id') id: string) {
+    return this.notesService.getYjsState(id, req.user.id);
+  }
+
+  /**
+   * Persists base64-encoded Yjs document state.
+   * Future Yjs WS server calls this periodically or on room close.
+   * Body: { state: string }
+   */
+  @Put(':id/yjs-state')
+  saveYjsState(
+    @Request() req,
+    @Param('id') id: string,
+    @Body('state') state: string,
+  ) {
+    return this.notesService.saveYjsState(id, req.user.id, state);
   }
 }

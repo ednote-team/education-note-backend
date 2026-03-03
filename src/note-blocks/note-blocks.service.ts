@@ -3,6 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { NoteBlock } from './entities/note-block.entity';
 import { Note } from '../notes/entities/note.entity';
+import { NotePermission } from '../note-permissions/entities/note-permission.entity';
 import {
   CreateBlockDto,
   UpdateBlockDto,
@@ -17,6 +18,9 @@ export class NoteBlocksService {
 
     @InjectRepository(Note)
     private readonly notesRepository: Repository<Note>,
+
+    @InjectRepository(NotePermission)
+    private readonly notePermissionsRepository: Repository<NotePermission>,
   ) { }
 
   /** 🔐 verify note ownership */
@@ -26,6 +30,21 @@ export class NoteBlocksService {
     });
 
     if (!note) {
+      throw new ForbiddenException('You do not have access to this note');
+    }
+  }
+
+  /** verify note ownership OR edit permission */
+  private async assertNoteAccess(userId: string, noteId: string) {
+    const note = await this.notesRepository.findOne({
+      where: { id: noteId, userId, isDeleted: false },
+    });
+    if (note) return;
+
+    const perm = await this.notePermissionsRepository.findOne({
+      where: { note_id: noteId, user_id: userId, role: 'edit' },
+    });
+    if (!perm) {
       throw new ForbiddenException('You do not have access to this note');
     }
   }
@@ -182,7 +201,7 @@ export class NoteBlocksService {
     noteId: string,
     blocks: CreateBlockDto[],
   ): Promise<void> {
-    await this.assertNoteOwner(userId, noteId);
+    await this.assertNoteAccess(userId, noteId);
 
     await this.noteBlocksRepository.manager.transaction(async (manager) => {
       await manager.delete(NoteBlock, { noteId });
