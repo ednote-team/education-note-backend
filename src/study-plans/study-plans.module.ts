@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { StudyPlansController } from './study-plans.controller';
+import { StudyPlansController, StudyPlanPublicController } from './study-plans.controller';
 import { StudyPlansService } from './study-plans.service';
 import { StudyPlan } from './entities/study-plan.entity';
 import { StudyPlanItem } from '../study-plan-items/entities/study-plan-item.entity';
@@ -9,7 +9,7 @@ import { StudyPlanItem } from '../study-plan-items/entities/study-plan-item.enti
   imports: [
     TypeOrmModule.forFeature([StudyPlan, StudyPlanItem]),
   ],
-  controllers: [StudyPlansController],
+  controllers: [StudyPlansController, StudyPlanPublicController],
   providers: [StudyPlansService],
   exports: [StudyPlansService],
 })

@@ -14,6 +14,17 @@ import { StudyPlansService } from './study-plans.service';
 import { CreateStudyPlanDto, UpdateStudyPlanDto } from './dto/study-plans.dto';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 
+/** Public — no auth needed */
+@Controller('study-plans')
+export class StudyPlanPublicController {
+  constructor(private readonly studyPlansService: StudyPlansService) {}
+
+  @Get(':id/public')
+  getPublic(@Param('id') id: string) {
+    return this.studyPlansService.getPublicStudyPlan(id);
+  }
+}
+
 @Controller('study-plans')
 @UseGuards(SupabaseAuthGuard)
 export class StudyPlansController {
@@ -32,6 +43,16 @@ export class StudyPlansController {
   @Get('deleted')
   findDeleted(@Request() req) {
     return this.studyPlansService.findDeleted(req.user.id);
+  }
+
+  @Get('shared-with-me')
+  getSharedWithMe(@Request() req) {
+    return this.studyPlansService.getSharedWithMe(req.user.id);
+  }
+
+  @Get(':id/my-access')
+  getMyAccess(@Request() req, @Param('id') id: string) {
+    return this.studyPlansService.getMyAccess(id, req.user.id);
   }
 
   @Get(':id')
