@@ -12,7 +12,7 @@ import { AiUsageModule } from '../ai-usage/ai-usage.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([FlashcardSet, Flashcard, Note, NoteBlock]),
+    TypeOrmModule.forFeature([FlashcardSet, Flashcard, FlashcardReview, Note, NoteBlock]),
     AiUsageModule,
   ],
   controllers: [FlashcardSetsController],
