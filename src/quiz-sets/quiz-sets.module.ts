@@ -7,10 +7,12 @@ import { QuizQuestion } from '../quiz-questions/entities/quiz-question.entity';
 import { Note } from '../notes/entities/note.entity';
 import { NoteBlock } from '../note-blocks/entities/note-block.entity';
 import { GeminiService } from '../common/llm/gemini.service';
+import { AiUsageModule } from '../ai-usage/ai-usage.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([QuizSet, QuizQuestion, Note, NoteBlock]),
+    AiUsageModule,
   ],
   controllers: [QuizSetsController],
   providers: [QuizSetsService, GeminiService],

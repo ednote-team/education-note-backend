@@ -6,6 +6,7 @@ import { NoteYjsState } from './entities/note-yjs-state.entity';
 import { CreateNoteDto, UpdateNoteDto } from './dto/notes.dto';
 import { GeminiService } from '../common/llm/gemini.service';
 import { NoteBlock } from '../note-blocks/entities/note-block.entity';
+import { AiUsageService } from '../ai-usage/ai-usage.service';
 
 export type AccessRole = 'owner' | 'edit' | 'view' | null;
 
@@ -20,6 +21,7 @@ export class NotesService {
     private readonly yjsStateRepo: Repository<NoteYjsState>,
     private readonly geminiService: GeminiService,
     private readonly dataSource: DataSource,
+    private readonly aiUsageService: AiUsageService,
   ) {}
 
   create(userId: string, dto: CreateNoteDto): Promise<Note> {
@@ -198,6 +200,7 @@ ${noteContent}
 
 กรุณาตอบคำถามอย่างชัดเจนและเป็นประโยชน์ โดยใช้รูปแบบ Markdown ที่ถูกต้องตามคำแนะนำข้างต้น`;
     }
+    await this.aiUsageService.increment(userId);
     const aiResponse = await this.geminiService.generate(prompt);
 
     return {

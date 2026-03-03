@@ -11,6 +11,7 @@ import { Note } from '../notes/entities/note.entity';
 import { NoteBlock } from '../note-blocks/entities/note-block.entity';
 import { CreateQuizSetDto, UpdateQuizSetDto } from './dto/quiz-set.dto';
 import { GeminiService } from '../common/llm/gemini.service';
+import { AiUsageService } from '../ai-usage/ai-usage.service';
 
 @Injectable()
 export class QuizSetsService {
@@ -28,6 +29,7 @@ export class QuizSetsService {
     private blockRepo: Repository<NoteBlock>,
 
     private readonly geminiService: GeminiService,
+    private readonly aiUsageService: AiUsageService,
   ) {}
 
   async generateFromNote(
@@ -112,6 +114,7 @@ Format:
 ]
 `;
 
+    await this.aiUsageService.increment(userId);
     const llmText = await this.geminiService.generate(prompt);
     const jsonStart = llmText.indexOf('[');
     const jsonEnd = llmText.lastIndexOf(']');

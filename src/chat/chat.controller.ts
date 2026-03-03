@@ -1,4 +1,4 @@
-import { Controller, Post, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Body, UseGuards, Request } from '@nestjs/common';
 import { ChatService } from './chat.service';
 import { ChatDto } from './dto/chat.dto';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
@@ -9,7 +9,7 @@ export class ChatController {
   constructor(private readonly chatService: ChatService) {}
 
   @Post()
-  chat(@Body() dto: ChatDto) {
-    return this.chatService.chat(dto.message, dto.context, dto.history);
+  chat(@Request() req, @Body() dto: ChatDto) {
+    return this.chatService.chat(req.user.id, dto.message, dto.context, dto.history);
   }
 }
