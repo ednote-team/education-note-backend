@@ -4,12 +4,15 @@ import { NotesController } from './notes.controller';
 import { NotesService } from './notes.service';
 import { Note } from './entities/note.entity';
 import { NoteBlock } from '../note-blocks/entities/note-block.entity';
+import { NoteYjsState } from './entities/note-yjs-state.entity';
 import { LlmModule } from '../common/llm/llm.module';
+import { AiUsageModule } from '../ai-usage/ai-usage.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Note, NoteBlock]),
+    TypeOrmModule.forFeature([Note, NoteBlock, NoteYjsState]),
     LlmModule,
+    AiUsageModule,
   ],
   controllers: [NotesController],
   providers: [NotesService],

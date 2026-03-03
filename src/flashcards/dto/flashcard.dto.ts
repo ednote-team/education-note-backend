@@ -15,6 +15,16 @@ export class CreateFlashcardDto {
   correct_answer?: string;
 }
 
+export class AddFlashcardToSetDto {
+  @IsString()
+  @IsNotEmpty()
+  front_text: string;
+
+  @IsString()
+  @IsNotEmpty()
+  back_text: string;
+}
+
 export class UpdateFlashcardDto {
   @IsString()
   @IsOptional()

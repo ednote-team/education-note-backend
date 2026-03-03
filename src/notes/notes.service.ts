@@ -1,10 +1,14 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Note } from './entities/note.entity';
+import { NoteYjsState } from './entities/note-yjs-state.entity';
 import { CreateNoteDto, UpdateNoteDto } from './dto/notes.dto';
 import { GeminiService } from '../common/llm/gemini.service';
 import { NoteBlock } from '../note-blocks/entities/note-block.entity';
+import { AiUsageService } from '../ai-usage/ai-usage.service';
+
+export type AccessRole = 'owner' | 'edit' | 'view' | null;
 
 @Injectable()
 export class NotesService {
@@ -13,7 +17,11 @@ export class NotesService {
     private readonly notesRepository: Repository<Note>,
     @InjectRepository(NoteBlock)
     private readonly blockRepository: Repository<NoteBlock>,
+    @InjectRepository(NoteYjsState)
+    private readonly yjsStateRepo: Repository<NoteYjsState>,
     private readonly geminiService: GeminiService,
+    private readonly dataSource: DataSource,
+    private readonly aiUsageService: AiUsageService,
   ) {}
 
   create(userId: string, dto: CreateNoteDto): Promise<Note> {
@@ -192,10 +200,83 @@ ${noteContent}
 
 กรุณาตอบคำถามอย่างชัดเจนและเป็นประโยชน์ โดยใช้รูปแบบ Markdown ที่ถูกต้องตามคำแนะนำข้างต้น`;
     }
+    await this.aiUsageService.increment(userId);
     const aiResponse = await this.geminiService.generate(prompt);
 
     return {
       response: aiResponse,
     };
+  }
+
+  async getSharedWithMe(userId: string): Promise<any[]> {
+    return this.dataSource.query(
+      `SELECT
+         np.id,
+         np.role,
+         np.shared_at   AS "sharedAt",
+         n.id           AS "noteId",
+         n.title        AS "noteTitle",
+         n.updated_at   AS "noteUpdatedAt",
+         au.email       AS "ownerEmail"
+       FROM note_permissions np
+       JOIN notes n  ON n.id = np.note_id AND n.is_deleted = false
+       LEFT JOIN auth.users au ON au.id::text = n.user_id::text
+       WHERE np.user_id = $1
+       ORDER BY np.shared_at DESC`,
+      [userId],
+    );
+  }
+
+  async getMyAccess(
+    noteId: string,
+    userId: string,
+  ): Promise<{ role: AccessRole; canEdit: boolean }> {
+    const note = await this.notesRepository.findOne({
+      where: { id: noteId, isDeleted: false },
+    });
+    if (!note) throw new NotFoundException('Note not found');
+
+    if (note.userId === userId) return { role: 'owner', canEdit: true };
+
+    const rows: { role: string }[] = await this.dataSource.query(
+      `SELECT role FROM note_permissions WHERE note_id = $1 AND user_id = $2 LIMIT 1`,
+      [noteId, userId],
+    );
+
+    if (!rows[0]) return { role: null, canEdit: false };
+    const role = rows[0].role as 'edit' | 'view';
+    return { role, canEdit: role === 'edit' };
+  }
+
+  async getYjsState(
+    noteId: string,
+    userId: string,
+  ): Promise<{ state: string | null }> {
+    const { role } = await this.getMyAccess(noteId, userId);
+    if (role === null) throw new ForbiddenException('No access to this note');
+
+    const record = await this.yjsStateRepo.findOne({ where: { noteId } });
+    return {
+      state: record?.state ? record.state.toString('base64') : null,
+    };
+  }
+
+  async saveYjsState(
+    noteId: string,
+    userId: string,
+    stateBase64: string,
+  ): Promise<{ ok: boolean }> {
+    const { canEdit } = await this.getMyAccess(noteId, userId);
+    if (!canEdit) throw new ForbiddenException('Edit access required');
+
+    const buf = Buffer.from(stateBase64, 'base64');
+    await this.dataSource.query(
+      `INSERT INTO note_yjs_states (note_id, state, updated_at)
+       VALUES ($1, $2, NOW())
+       ON CONFLICT (note_id)
+       DO UPDATE SET state = EXCLUDED.state, updated_at = NOW()`,
+      [noteId, buf],
+    );
+    return { ok: true };
   }
 }

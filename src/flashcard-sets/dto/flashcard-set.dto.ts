@@ -13,6 +13,16 @@ export class CreateFlashcardSetDto {
   description?: string;
 }
 
+export class UpdateFlashcardSetDto {
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+}
+
 export class GenerateFlashcardDto {
   @IsUUID()
   noteId: string;

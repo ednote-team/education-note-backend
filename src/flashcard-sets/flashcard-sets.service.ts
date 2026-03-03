@@ -12,6 +12,7 @@ import { Note } from '../notes/entities/note.entity';
 import { NoteBlock } from '../note-blocks/entities/note-block.entity';
 import { GeminiService } from '../common/llm/gemini.service';
 import { CreateManualFlashcardSetDto, MergeFlashcardSetsDto } from './dto/flashcard-set.dto';
+import { AiUsageService } from '../ai-usage/ai-usage.service';
 
 @Injectable()
 export class FlashcardSetsService {
@@ -32,6 +33,7 @@ export class FlashcardSetsService {
     private readonly blockRepo: Repository<NoteBlock>,
 
     private readonly geminiService: GeminiService,
+    private readonly aiUsageService: AiUsageService,
   ) {}
 
   async generateFromNote(
@@ -102,6 +104,7 @@ Format:
 ]
 `;
 
+    await this.aiUsageService.increment(userId);
     const llmText = await this.geminiService.generate(prompt);
     const jsonStart = llmText.indexOf('[');
     const jsonEnd = llmText.lastIndexOf(']');
@@ -169,6 +172,22 @@ Format:
     }
 
     return set;
+  }
+
+  async update(setId: string, userId: string, dto: { title?: string; description?: string }) {
+    const set = await this.setRepo.findOne({
+      where: { id: setId, note: { userId }, isDeleted: false },
+      relations: ['note'],
+    });
+
+    if (!set) {
+      throw new NotFoundException('Flashcard set not found');
+    }
+
+    if (dto.title !== undefined) set.title = dto.title;
+    if (dto.description !== undefined) set.description = dto.description;
+
+    return this.setRepo.save(set);
   }
 
   async remove(setId: string, userId: string) {
