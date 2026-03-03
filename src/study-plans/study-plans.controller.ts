@@ -9,6 +9,7 @@ import {
   Param,
   UseGuards,
   Request,
+  HttpCode,
 } from '@nestjs/common';
 import { StudyPlansService } from './study-plans.service';
 import { CreateStudyPlanDto, UpdateStudyPlanDto } from './dto/study-plans.dto';
@@ -89,5 +90,42 @@ export class StudyPlansController {
   @Post(':id/restore')
   restore(@Request() req, @Param('id') id: string) {
     return this.studyPlansService.restore(id, req.user.id);
+  }
+}
+
+@Controller('study-plans/:planId/shares')
+@UseGuards(SupabaseAuthGuard)
+export class StudyPlanSharesController {
+  constructor(private readonly studyPlansService: StudyPlansService) {}
+
+  @Get()
+  findAll(@Request() req, @Param('planId') planId: string) {
+    return this.studyPlansService.getShares(planId, req.user.id);
+  }
+
+  @Post()
+  create(@Request() req, @Param('planId') planId: string, @Body() body: { email: string; role: string }) {
+    return this.studyPlansService.createShare(planId, req.user.id, body);
+  }
+
+  @Patch(':permId')
+  updateRole(
+    @Request() req,
+    @Param('planId') planId: string,
+    @Param('permId') permId: string,
+    @Body() body: { role: string },
+  ) {
+    return this.studyPlansService.updateShare(planId, permId, req.user.id, body);
+  }
+
+  @Delete(':permId')
+  @HttpCode(200)
+  async revoke(
+    @Request() req,
+    @Param('planId') planId: string,
+    @Param('permId') permId: string,
+  ) {
+    await this.studyPlansService.revokeShare(planId, permId, req.user.id);
+    return { message: 'Access revoked' };
   }
 }

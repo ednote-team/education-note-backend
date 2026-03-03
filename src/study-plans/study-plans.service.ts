@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { StudyPlan } from './entities/study-plan.entity';
 import { CreateStudyPlanDto, UpdateStudyPlanDto } from './dto/study-plans.dto';
 import { StudyPlanItem } from '../study-plan-items/entities/study-plan-item.entity';
+import { NotePermission } from '../note-permissions/entities/note-permission.entity';
 
 export type PlanAccessRole = 'owner' | 'edit' | 'view' | null;
 
@@ -14,6 +15,8 @@ export class StudyPlansService {
     private readonly studyPlansRepository: Repository<StudyPlan>,
     @InjectRepository(StudyPlanItem)
     private readonly itemRepository: Repository<StudyPlanItem>,
+    @InjectRepository(NotePermission)
+    private readonly permRepo: Repository<NotePermission>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -183,6 +186,88 @@ export class StudyPlansService {
     if (!rows[0]) return { role: null, canEdit: false };
     const role = rows[0].role as 'edit' | 'view';
     return { role, canEdit: role === 'edit' };
+  }
+
+  /* ── Shares (owner-only CRUD via note_permissions) ── */
+
+  private async assertPlanOwner(planId: string, ownerId: string): Promise<StudyPlan> {
+    const plan = await this.studyPlansRepository.findOne({
+      where: { id: planId, userId: ownerId, isDeleted: false },
+    });
+    if (!plan) throw new NotFoundException('Study plan not found');
+    return plan;
+  }
+
+  private async findUserByEmail(email: string): Promise<{ id: string; email: string } | null> {
+    const rows: { id: string; email: string }[] = await this.dataSource.query(
+      `SELECT id::text, email FROM auth.users WHERE email = $1 LIMIT 1`,
+      [email],
+    );
+    return rows[0] ?? null;
+  }
+
+  async getShares(planId: string, ownerId: string): Promise<(NotePermission & { email: string })[]> {
+    await this.assertPlanOwner(planId, ownerId);
+    const perms = await this.permRepo.find({
+      where: { note_id: planId, resource_type: 'plan' },
+      order: { shared_at: 'ASC' },
+    });
+    if (perms.length === 0) return [];
+    const userIds = perms.map((p) => p.user_id);
+    const rows: { id: string; email: string }[] = await this.dataSource.query(
+      `SELECT id::text, email FROM auth.users WHERE id = ANY($1::uuid[])`,
+      [userIds],
+    );
+    const emailMap = new Map(rows.map((r) => [r.id, r.email]));
+    return perms.map((p) => ({ ...p, email: emailMap.get(p.user_id) ?? p.user_id }));
+  }
+
+  async createShare(
+    planId: string,
+    ownerId: string,
+    dto: { email: string; role: string },
+  ): Promise<NotePermission & { email: string }> {
+    await this.assertPlanOwner(planId, ownerId);
+    const user = await this.findUserByEmail(dto.email);
+    if (!user) throw new NotFoundException('No user found with this email');
+
+    const existing = await this.permRepo.findOne({
+      where: { note_id: planId, user_id: user.id, resource_type: 'plan' },
+    });
+    if (existing) throw new ConflictException('User already has access to this plan');
+
+    const perm = this.permRepo.create({
+      note_id: planId,
+      user_id: user.id,
+      role: dto.role,
+      resource_type: 'plan',
+    });
+    const saved = await this.permRepo.save(perm);
+    return { ...saved, email: user.email };
+  }
+
+  async updateShare(
+    planId: string,
+    permId: string,
+    ownerId: string,
+    dto: { role: string },
+  ): Promise<NotePermission> {
+    await this.assertPlanOwner(planId, ownerId);
+    const perm = await this.permRepo.findOne({
+      where: { id: permId, note_id: planId, resource_type: 'plan' },
+    });
+    if (!perm) throw new NotFoundException('Permission not found');
+    perm.role = dto.role;
+    return this.permRepo.save(perm);
+  }
+
+  async revokeShare(planId: string, permId: string, ownerId: string): Promise<void> {
+    await this.assertPlanOwner(planId, ownerId);
+    const perm = await this.permRepo.findOne({
+      where: { id: permId, note_id: planId, resource_type: 'plan' },
+    });
+    if (!perm) throw new NotFoundException('Permission not found');
+    await this.permRepo.remove(perm);
   }
 
   async getPublicStudyPlan(planId: string): Promise<{
