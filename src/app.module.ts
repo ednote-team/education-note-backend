@@ -16,6 +16,9 @@ import { ChatModule } from './chat/chat.module';
 import { StudyPlansModule } from './study-plans/study-plans.module';
 import { StudyPlanItemsModule } from './study-plan-items/study-plan-items.module';
 import { NotePermissionsModule } from './note-permissions/note-permissions.module';
+import { CollabModule } from './collab/collab.module';
+import { NoteActivityModule } from './note-activity/note-activity.module';
+import { NoteVersionsModule } from './note-versions/note-versions.module';
 
 @Module({
   imports: [
@@ -45,6 +48,9 @@ import { NotePermissionsModule } from './note-permissions/note-permissions.modul
     StudyPlansModule,
     StudyPlanItemsModule,
     NotePermissionsModule,
+    CollabModule,
+    NoteActivityModule,
+    NoteVersionsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
