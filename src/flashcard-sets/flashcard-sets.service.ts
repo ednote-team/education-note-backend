@@ -152,13 +152,12 @@ Format:
   }
 
   async findByNote(noteId: string) {
-    return this.setRepo.find({
-      where: {
-        note: { id: noteId },
-        isDeleted: false,
-      },
-      order: { created_at: 'DESC' },
-    });
+    return this.setRepo.createQueryBuilder('set')
+      .where('set.note_id = :noteId', { noteId })
+      .andWhere('set.is_deleted = false')
+      .loadRelationCountAndMap('set.cardCount', 'set.flashcards')
+      .orderBy('set.created_at', 'DESC')
+      .getMany();
   }
 
   async findOne(setId: string) {

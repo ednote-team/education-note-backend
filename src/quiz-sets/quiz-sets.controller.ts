@@ -11,7 +11,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { QuizSetsService } from './quiz-sets.service';
-import { CreateQuizSetDto, UpdateQuizSetDto, GenerateQuizDto } from './dto/quiz-set.dto';
+import { CreateQuizSetDto, UpdateQuizSetDto, GenerateQuizDto, ManualQuizSetDto, MergeQuizSetsDto } from './dto/quiz-set.dto';
 import { SupabaseAuthGuard } from '../auth/supabase-auth.guard';
 
 @UseGuards(SupabaseAuthGuard)
@@ -38,6 +38,21 @@ export class QuizSetsController {
       console.error('Error generating quiz:', error);
       throw error;
     }
+  }
+
+  @Post('manual')
+  createManual(@Body() dto: ManualQuizSetDto, @Req() req: any) {
+    return this.quizSetsService.createManual(dto, req.user.id);
+  }
+
+  @Post('merge')
+  merge(@Body() dto: MergeQuizSetsDto, @Req() req: any) {
+    return this.quizSetsService.mergeFromSets(dto, req.user.id);
+  }
+
+  @Post('merge-wrong')
+  mergeWrong(@Body() dto: MergeQuizSetsDto, @Req() req: any) {
+    return this.quizSetsService.mergeWrongAnswers(dto, req.user.id);
   }
 
   @Post()

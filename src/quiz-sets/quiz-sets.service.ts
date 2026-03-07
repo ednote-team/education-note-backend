@@ -4,12 +4,13 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { QuizSet } from './entities/quiz-set.entity';
 import { QuizQuestion } from '../quiz-questions/entities/quiz-question.entity';
+import { QuizAnswer } from '../quiz-answers/entities/quiz-answer.entity';
 import { Note } from '../notes/entities/note.entity';
 import { NoteBlock } from '../note-blocks/entities/note-block.entity';
-import { CreateQuizSetDto, UpdateQuizSetDto } from './dto/quiz-set.dto';
+import { CreateQuizSetDto, UpdateQuizSetDto, ManualQuizSetDto, MergeQuizSetsDto } from './dto/quiz-set.dto';
 import { GeminiService } from '../common/llm/gemini.service';
 import { AiUsageService } from '../ai-usage/ai-usage.service';
 
@@ -21,6 +22,9 @@ export class QuizSetsService {
 
     @InjectRepository(QuizQuestion)
     private questionRepo: Repository<QuizQuestion>,
+
+    @InjectRepository(QuizAnswer)
+    private answerRepo: Repository<QuizAnswer>,
 
     @InjectRepository(Note)
     private noteRepo: Repository<Note>,
@@ -157,6 +161,109 @@ Format:
       setId: set.id,
       count: questions.length,
     };
+  }
+
+  async createManual(dto: ManualQuizSetDto, userId: string): Promise<{ setId: string; count: number }> {
+    const note = await this.noteRepo.findOne({ where: { id: dto.noteId, userId } });
+    if (!note) throw new NotFoundException('Note not found');
+    if (!dto.questions || dto.questions.length === 0) {
+      throw new BadRequestException('At least one question is required');
+    }
+
+    const set = this.quizSetRepository.create({
+      note: { id: dto.noteId },
+      title: dto.title || 'Manual Quiz',
+      description: dto.description || 'Manually created',
+    });
+    await this.quizSetRepository.save(set);
+
+    await this.questionRepo.save(
+      dto.questions.map(q => this.questionRepo.create({ ...q, quiz_set_id: set.id })),
+    );
+
+    note.hasQuiz = true;
+    await this.noteRepo.save(note);
+    return { setId: set.id, count: dto.questions.length };
+  }
+
+  async mergeFromSets(dto: MergeQuizSetsDto, userId: string): Promise<{ setId: string; count: number }> {
+    const note = await this.noteRepo.findOne({ where: { id: dto.noteId, userId } });
+    if (!note) throw new NotFoundException('Note not found');
+    if (!dto.sourceSetIds || dto.sourceSetIds.length === 0) {
+      throw new BadRequestException('At least one source set is required');
+    }
+
+    const questions = await this.questionRepo.find({
+      where: { quiz_set_id: In(dto.sourceSetIds) },
+    });
+
+    const set = this.quizSetRepository.create({
+      note: { id: dto.noteId },
+      title: dto.title || 'Merged Quiz',
+      description: 'Merged from multiple sets',
+    });
+    await this.quizSetRepository.save(set);
+
+    if (questions.length > 0) {
+      await this.questionRepo.save(
+        questions.map(q => this.questionRepo.create({
+          quiz_set_id: set.id,
+          question_text: q.question_text,
+          question_type: q.question_type,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          explanation: q.explanation,
+        })),
+      );
+    }
+
+    note.hasQuiz = true;
+    await this.noteRepo.save(note);
+    return { setId: set.id, count: questions.length };
+  }
+
+  async mergeWrongAnswers(dto: MergeQuizSetsDto, userId: string): Promise<{ setId: string; count: number }> {
+    const note = await this.noteRepo.findOne({ where: { id: dto.noteId, userId } });
+    if (!note) throw new NotFoundException('Note not found');
+    if (!dto.sourceSetIds || dto.sourceSetIds.length === 0) {
+      throw new BadRequestException('At least one source set is required');
+    }
+
+    const wrongAnswers = await this.answerRepo.find({
+      where: {
+        isCorrect: false,
+        question: { quiz_set_id: In(dto.sourceSetIds) },
+      },
+      relations: ['question'],
+    });
+
+    const uniqueQuestions = Array.from(
+      new Map(wrongAnswers.map(a => [a.question_id, a.question])).values(),
+    );
+
+    const set = this.quizSetRepository.create({
+      note: { id: dto.noteId },
+      title: dto.title || 'Wrong Answers Review',
+      description: 'Questions you answered incorrectly',
+    });
+    await this.quizSetRepository.save(set);
+
+    if (uniqueQuestions.length > 0) {
+      await this.questionRepo.save(
+        uniqueQuestions.map(q => this.questionRepo.create({
+          quiz_set_id: set.id,
+          question_text: q.question_text,
+          question_type: q.question_type,
+          options: q.options,
+          correct_answer: q.correct_answer,
+          explanation: q.explanation,
+        })),
+      );
+    }
+
+    note.hasQuiz = true;
+    await this.noteRepo.save(note);
+    return { setId: set.id, count: uniqueQuestions.length };
   }
 
   async create(createQuizSetDto: CreateQuizSetDto): Promise<QuizSet> {
