@@ -1,4 +1,4 @@
-import { IsString, IsOptional, IsUUID } from 'class-validator';
+import { IsString, IsOptional, IsUUID, IsArray } from 'class-validator';
 
 export class CreateQuizSetDto {
   @IsUUID()
@@ -33,4 +33,38 @@ export class GenerateQuizDto {
     language?: 'th' | 'en';
     questionTypes?: ('multiple_choice' | 'true_false' | 'short_answer')[];
   };
+}
+
+export class ManualQuizSetDto {
+  @IsUUID()
+  noteId: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsOptional()
+  @IsString()
+  description?: string;
+
+  @IsArray()
+  questions: {
+    question_text: string;
+    question_type: string;
+    options?: string[];
+    correct_answer: string;
+    explanation?: string;
+  }[];
+}
+
+export class MergeQuizSetsDto {
+  @IsUUID()
+  noteId: string;
+
+  @IsOptional()
+  @IsString()
+  title?: string;
+
+  @IsArray()
+  sourceSetIds: string[];
 }
