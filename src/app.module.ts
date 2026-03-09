@@ -19,6 +19,7 @@ import { NotePermissionsModule } from './note-permissions/note-permissions.modul
 import { CollabModule } from './collab/collab.module';
 import { NoteActivityModule } from './note-activity/note-activity.module';
 import { NoteVersionsModule } from './note-versions/note-versions.module';
+import { CalendarsModule } from './calendars/calendars.module';
 
 @Module({
   imports: [
@@ -51,6 +52,7 @@ import { NoteVersionsModule } from './note-versions/note-versions.module';
     CollabModule,
     NoteActivityModule,
     NoteVersionsModule,
+    CalendarsModule,
   ],
   controllers: [AppController],
   providers: [AppService],
