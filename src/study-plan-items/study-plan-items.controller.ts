@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -30,6 +31,15 @@ export class StudyPlanItemsController {
     @Body() dto: CreateStudyPlanItemDto,
   ) {
     return this.studyPlanItemsService.create(req.user.id, planId, dto);
+  }
+
+  @Get('deadlines')
+  findDeadlines(
+    @Request() req,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.studyPlanItemsService.findDeadlines(req.user.id, startDate, endDate);
   }
 
   @Get('plan/:planId')

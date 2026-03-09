@@ -158,6 +158,41 @@ export class StudyPlanItemsService {
     });
   }
 
+  async findDeadlines(
+    userId: string,
+    startDate?: string,
+    endDate?: string,
+  ): Promise<any[]> {
+    let sql = `
+      SELECT
+        spi.id,
+        spi.plan_id       AS "planId",
+        sp.title          AS "planTitle",
+        spi.title,
+        spi.due_date      AS "dueDate",
+        spi.status,
+        spi.ref_type      AS "refType",
+        spi.ref_id        AS "refId"
+      FROM study_plan_items spi
+      JOIN study_plans sp ON sp.id = spi.plan_id AND sp.is_deleted = false
+      WHERE sp.user_id = $1
+        AND spi.ref_type = 'deadline'
+    `;
+    const params: any[] = [userId];
+
+    if (startDate) {
+      params.push(startDate);
+      sql += ` AND spi.due_date >= $${params.length}`;
+    }
+    if (endDate) {
+      params.push(endDate);
+      sql += ` AND spi.due_date <= $${params.length}`;
+    }
+
+    sql += ` ORDER BY spi.due_date ASC`;
+    return this.dataSource.query(sql, params);
+  }
+
   async replaceAll(
     userId: string,
     planId: string,
