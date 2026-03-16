@@ -20,6 +20,7 @@ import { CollabModule } from './collab/collab.module';
 import { NoteActivityModule } from './note-activity/note-activity.module';
 import { NoteVersionsModule } from './note-versions/note-versions.module';
 import { CalendarsModule } from './calendars/calendars.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { CalendarsModule } from './calendars/calendars.module';
     NoteActivityModule,
     NoteVersionsModule,
     CalendarsModule,
+    UsersModule,
   ],
   controllers: [AppController],
   providers: [AppService],
