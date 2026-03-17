@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -81,6 +82,10 @@ export class NotePermissionsService {
     const supabaseUser = await this.findUserByEmail(dto.email);
     if (!supabaseUser) {
       throw new NotFoundException('No user found with this email');
+    }
+
+    if (supabaseUser.id === owner_id) {
+      throw new ForbiddenException('You cannot share with yourself');
     }
 
     const existing = await this.permRepo.findOne({

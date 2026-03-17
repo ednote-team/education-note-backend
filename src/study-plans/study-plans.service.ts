@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
 import { StudyPlan } from './entities/study-plan.entity';
@@ -229,7 +229,13 @@ export class StudyPlansService {
   ): Promise<NotePermission & { email: string }> {
     await this.assertPlanOwner(planId, ownerId);
     const user = await this.findUserByEmail(dto.email);
-    if (!user) throw new NotFoundException('No user found with this email');
+    if (!user) {
+      throw new NotFoundException('No user found with this email');
+    }
+
+    if (user.id === ownerId) {
+      throw new ForbiddenException('You cannot share with yourself');
+    }
 
     const existing = await this.permRepo.findOne({
       where: { note_id: planId, user_id: user.id, resource_type: 'plan' },
