@@ -1,10 +1,12 @@
-import { IsUUID, IsArray, ValidateNested } from 'class-validator';
+import { IsUUID, IsArray, IsString, IsOptional, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class SubmitAnswerDto {
   @IsUUID()
   question_id: string;
 
+  @IsOptional()
+  @IsString()
   user_answer: string;
 }
 
