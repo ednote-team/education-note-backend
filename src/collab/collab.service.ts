@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
 import { DataSource } from 'typeorm';
-import { Server } from '@hocuspocus/server';
+import { Hocuspocus } from '@hocuspocus/server';
 import { jwtDecode } from 'jwt-decode';
 import { NoteActivityService } from '../note-activity/note-activity.service';
 
@@ -23,7 +23,7 @@ interface AuthContext {
 @Injectable()
 export class CollabService implements OnApplicationShutdown {
   private readonly logger = new Logger(CollabService.name);
-  private server: Server;
+  private server: Hocuspocus;
 
   constructor(
     @InjectDataSource() private readonly dataSource: DataSource,
@@ -134,13 +134,13 @@ export class CollabService implements OnApplicationShutdown {
 
   // Called from main.ts after app.listen() — shares the same HTTP port
   attachToHttpServer(httpServer: http.Server) {
-    this.server = new Server(this.buildServerConfig());
+    this.server = new Hocuspocus(this.buildServerConfig());
 
     const wss = new WebSocketServer({ noServer: true });
 
     httpServer.on('upgrade', (request, socket, head) => {
       wss.handleUpgrade(request, socket as any, head, (ws) => {
-        (this.server as any).handleConnection(ws, request);
+        this.server.handleConnection(ws, request);
       });
     });
 
@@ -148,6 +148,6 @@ export class CollabService implements OnApplicationShutdown {
   }
 
   async onApplicationShutdown() {
-    await this.server?.destroy();
+    this.server?.closeConnections();
   }
 }
