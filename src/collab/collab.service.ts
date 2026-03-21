@@ -1,7 +1,8 @@
+import * as http from 'http';
+import { WebSocketServer } from 'ws';
 import {
   Injectable,
   Logger,
-  OnApplicationBootstrap,
   OnApplicationShutdown,
 } from '@nestjs/common';
 import { InjectDataSource } from '@nestjs/typeorm';
@@ -20,9 +21,7 @@ interface AuthContext {
 }
 
 @Injectable()
-export class CollabService
-  implements OnApplicationBootstrap, OnApplicationShutdown
-{
+export class CollabService implements OnApplicationShutdown {
   private readonly logger = new Logger(CollabService.name);
   private server: Server;
 
@@ -31,18 +30,12 @@ export class CollabService
     private readonly noteActivityService: NoteActivityService,
   ) {}
 
-  async onApplicationBootstrap() {
-    const port = parseInt(process.env.COLLAB_PORT ?? '1234', 10);
+  private buildServerConfig() {
     const ds = this.dataSource;
     const activityService = this.noteActivityService;
 
-    this.server = new Server({
-      port,
-
-      /* ── Auth: decode JWT + check note/plan access ─────────────────── */
+    return {
       async onAuthenticate({ token, documentName, connectionConfig }) {
-        // Parse document type and resource ID from the document name.
-        // Supported formats: "note-{uuid}" | "study-plan-{uuid}"
         let resourceType: 'note' | 'plan';
         let resourceId: string;
 
@@ -58,7 +51,6 @@ export class CollabService
           throw new Error(`Invalid document name: ${documentName}`);
         }
 
-        // Decode JWT — no signature check, same pattern as SupabaseAuthGuard
         let userId: string;
         let userName: string;
         try {
@@ -81,14 +73,8 @@ export class CollabService
         }
 
         if (resourceType === 'note') {
-          // 1a. Note owner → full access
           const ownerRows: unknown[] = await ds.query(
-            `SELECT 1
-               FROM notes
-              WHERE id         = $1::uuid
-                AND user_id    = $2::uuid
-                AND is_deleted = false
-              LIMIT 1`,
+            `SELECT 1 FROM notes WHERE id = $1::uuid AND user_id = $2::uuid AND is_deleted = false LIMIT 1`,
             [resourceId, userId],
           );
 
@@ -96,13 +82,8 @@ export class CollabService
             return { userId, userName, role: 'owner' } satisfies AuthContext;
           }
 
-          // 1b. Shared note collaborator
           const permRows: { role: string }[] = await ds.query(
-            `SELECT role
-               FROM note_permissions
-              WHERE note_id = $1::uuid
-                AND user_id = $2::uuid
-              LIMIT 1`,
+            `SELECT role FROM note_permissions WHERE note_id = $1::uuid AND user_id = $2::uuid LIMIT 1`,
             [resourceId, userId],
           );
 
@@ -113,15 +94,8 @@ export class CollabService
           return { userId, userName, role } satisfies AuthContext;
         }
 
-        // resourceType === 'plan'
-        // 2a. Plan owner → full access
         const planOwnerRows: unknown[] = await ds.query(
-          `SELECT 1
-             FROM study_plans
-            WHERE id         = $1::uuid
-              AND user_id    = $2::uuid
-              AND is_deleted = false
-            LIMIT 1`,
+          `SELECT 1 FROM study_plans WHERE id = $1::uuid AND user_id = $2::uuid AND is_deleted = false LIMIT 1`,
           [resourceId, userId],
         );
 
@@ -129,14 +103,8 @@ export class CollabService
           return { userId, userName, role: 'owner' } satisfies AuthContext;
         }
 
-        // 2b. Shared plan collaborator (edit role only — view is read-only)
         const planPermRows: { role: string }[] = await ds.query(
-          `SELECT role
-             FROM note_permissions
-            WHERE note_id       = $1::uuid
-              AND user_id       = $2::uuid
-              AND resource_type = 'plan'
-            LIMIT 1`,
+          `SELECT role FROM note_permissions WHERE note_id = $1::uuid AND user_id = $2::uuid AND resource_type = 'plan' LIMIT 1`,
           [resourceId, userId],
         );
 
@@ -147,9 +115,7 @@ export class CollabService
         return { userId, userName, role: planRole } satisfies AuthContext;
       },
 
-      /* ── Track edits for activity history (notes only) ──────────────── */
       async onChange({ documentName, context }) {
-        // Only track activity for notes, not study plans
         if (!documentName.startsWith('note-')) return;
         const noteId = documentName.slice('note-'.length);
         if (!UUID_RE.test(noteId)) return;
@@ -157,17 +123,28 @@ export class CollabService
         const { userId, userName } = context as AuthContext;
         if (!userId) return;
 
-        // Fire-and-forget — don't block the collab pipeline
         activityService
           .logActivity(noteId, userId, userName)
           .catch((err) =>
             console.error('[onChange] Failed to log activity', err),
           );
       },
+    };
+  }
+
+  // Called from main.ts after app.listen() — shares the same HTTP port
+  attachToHttpServer(httpServer: http.Server) {
+    this.server = new Server(this.buildServerConfig());
+
+    const wss = new WebSocketServer({ noServer: true });
+
+    httpServer.on('upgrade', (request, socket, head) => {
+      wss.handleUpgrade(request, socket as any, head, (ws) => {
+        (this.server as any).handleConnection(ws, request);
+      });
     });
 
-    await this.server.listen();
-    this.logger.log(`🤝 Collab (Hocuspocus) running on ws://localhost:${port}`);
+    this.logger.log(`🤝 Collab (Hocuspocus) attached to shared HTTP server`);
   }
 
   async onApplicationShutdown() {
